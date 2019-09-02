@@ -46,7 +46,7 @@ services:
       - back-tier
     restart: always
 
-  mongodb:
+  mongodb-exporter:
     image: mongodb-exporter:master
     ports:
       - 9001:9001

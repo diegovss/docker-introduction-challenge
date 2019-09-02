@@ -5,8 +5,8 @@ volumes:
     grafana_data: {}
 
 networks:
-  front-tier:
-  back-tier:
+  front-tier: mongo
+  back-tier: mongo
 
 services:
 
@@ -34,6 +34,29 @@ services:
 #      placement:
 #        constraints:
 #          - node.hostname == ${HOSTNAME}
+
+  mongodb:
+    image: mongodb:latest
+    ports:
+      - 27017:27017
+    links:
+      - cadvisor:cadvisor
+      - alertmanager:alertmanager
+    networks:
+      - back-tier
+    restart: always
+
+  mongodb:
+    image: mongodb-exporter:master
+    ports:
+      - 9001:9001
+    links:
+      - cadvisor:cadvisor
+      - alertmanager:alertmanager
+    networks:
+      - back-tier
+    restart: always
+
 
   node-exporter:
     image: prom/node-exporter

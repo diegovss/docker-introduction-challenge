@@ -5,10 +5,8 @@ volumes:
     grafana_data: {}
 
 networks:
-  front-tier: 
-    name: mongo
-  back-tier:
-    name: mongo
+  main: 
+    name: ???
 
 services:
 
@@ -30,37 +28,8 @@ services:
     depends_on:
       - cadvisor
     networks:
-      - back-tier
+      - main
     restart: always
-#    deploy:
-#      placement:
-#        constraints:
-#          - node.hostname == ${HOSTNAME}
-
-  mongodb:
-    image: mongo:latest
-    ports:
-      - 27017:27017
-    links:
-      - cadvisor:cadvisor
-      - alertmanager:alertmanager
-    networks:
-      - back-tier
-    restart: always
-
-  mongodb-exporter:
-    image: mongodb-exporter:master
-    ports:
-      - 9216:9216
-    links:
-      - cadvisor:cadvisor
-      - alertmanager:alertmanager
-    networks:
-      - back-tier
-    restart: always
-    command:
-      - '--mongodb.uri=mongodb://mongodb:27017'
-
 
   node-exporter:
     image: prom/node-exporter
@@ -76,7 +45,7 @@ services:
     ports:
       - 9100:9100
     networks:
-      - back-tier
+      - main
     restart: always
     deploy:
       mode: global
@@ -88,15 +57,12 @@ services:
     volumes:
       - ./alertmanager/:/etc/alertmanager/
     networks:
-      - back-tier
+      - main
     restart: always
     command:
       - '--config.file=/etc/alertmanager/config.yml'
       - '--storage.path=/alertmanager'
-#    deploy:
-#      placement:
-#        constraints:
-#          - node.hostname == ${HOSTNAME}
+
   cadvisor:
     image: google/cadvisor
     volumes:
@@ -107,7 +73,7 @@ services:
     ports:
       - 8080:8080
     networks:
-      - back-tier
+      - main
     restart: always
     deploy:
       mode: global
@@ -125,6 +91,5 @@ services:
     env_file:
       - ./grafana/config.monitoring
     networks:
-      - back-tier
-      - front-tier
+      - main
     restart: always

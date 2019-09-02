@@ -5,8 +5,10 @@ volumes:
     grafana_data: {}
 
 networks:
-  front-tier: mongo
-  back-tier: mongo
+  front-tier: 
+    name: mongo
+  back-tier:
+    name: mongo
 
 services:
 
@@ -36,7 +38,7 @@ services:
 #          - node.hostname == ${HOSTNAME}
 
   mongodb:
-    image: mongodb:latest
+    image: mongo:latest
     ports:
       - 27017:27017
     links:
@@ -47,7 +49,7 @@ services:
     restart: always
 
   mongodb-exporter:
-    image: mongodb-exporter:master
+    image: mongodb-exporter:latest
     ports:
       - 9001:9001
     links:
@@ -56,6 +58,8 @@ services:
     networks:
       - back-tier
     restart: always
+    command:
+      - '--mongodb.uri=mongodb'
 
 
   node-exporter:

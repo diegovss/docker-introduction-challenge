@@ -36,7 +36,7 @@ scrape_configs:
     static_configs:
          - targets: ['localhost:9090']
 
- - job_name: 'mongodb'
+  - job_name: 'mongodb'
 
     # Override the global default and scrape targets from this job every 5 seconds.
     scrape_interval: 5s
@@ -71,4 +71,4 @@ scrape_configs:
       port: 9100
     
 #     static_configs:
-#          - targets: ['node-exporter:9100']
+#          - targets: ['node-exporter:9100'

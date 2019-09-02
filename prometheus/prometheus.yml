@@ -42,7 +42,7 @@ scrape_configs:
     scrape_interval: 5s
 
     static_configs:
-         - targets: ['mongodb-exporter:9001']
+         - targets: ['mongodb-exporter:9216']
 
 
   - job_name: 'cadvisor'
@@ -71,4 +71,4 @@ scrape_configs:
       port: 9100
     
 #     static_configs:
-#          - targets: ['node-exporter:9100'
+#          - targets: ['node-exporter:9100

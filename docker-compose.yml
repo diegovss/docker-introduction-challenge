@@ -49,9 +49,9 @@ services:
     restart: always
 
   mongodb-exporter:
-    image: mongodb-exporter:latest
+    image: mongodb-exporter:master
     ports:
-      - 9001:9001
+      - 9216:9216
     links:
       - cadvisor:cadvisor
       - alertmanager:alertmanager
@@ -59,7 +59,7 @@ services:
       - back-tier
     restart: always
     command:
-      - '--mongodb.uri=mongodb'
+      - '--mongodb.uri=mongodb://mongodb:27017'
 
 
   node-exporter:
@@ -128,4 +128,3 @@ services:
       - back-tier
       - front-tier
     restart: always
-

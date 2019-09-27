@@ -1,190 +1,57 @@
-[![Build Status](https://travis-ci.org/vegasbrianc/prometheus.svg?branch=version-2)](https://travis-ci.org/vegasbrianc/prometheus)
+# DESAFIO DE DOCKER
+Exercício para aplicar conhecimentos introdutórios de Docker
 
-# Contents
+## OBJETIVO GERAL
+O objetivo desse desafio é colocar em prática os conhecimentos introdutórios de Docker vistos em nosso curso introdutório, trabalhando com um cenário real e bem interessante: monitoramento de um container com uma instância do MongoDB!
 
-- Introduction
-  - [Overview](#a-prometheus--grafana-docker-compose-stack)
-  - [Pre-requisites](#pre-requisites)
-  - [Installation & Configuration](#installation--configuration)
-    - [Add Datasources & Dashboards](#add-datasources-and-dashboards)
-    - [Install Dashboards the Old Way](#install-dashboards-the-old-way)
-  	- [Alerting](#alerting)
-  	- [Test Alerts](#test-alerts)
-    - [Add additional Datasources](#add-additional-datasources)
-  - [Deploy Prometheus stack with Traefik](#deploy-prometheus-stack-with-traefik)
-  - [Security Considerations](#security-considerations)
-  	- [Production Security](#production-security)
-  - [Troubleshooting](#troubleshooting)
-  	- [Mac Users](#mac-users)
-  - [Interesting Projects that use this Repo](#interesting-projects-that-use-this-repo)
+## FERRAMENTAS
+Quando lidamos com aplicações rodando em ambientes de produção, é necessário analisarmos como as aplicações (e as máquinas em que estão rodando) estão trabalhando: saber se um banco de dados está realizando muitas leituras em disco, saber se a rede está ficando sobrecarregada, saber se alguma aplicação está usando mais memória do que devia, etc. Duas tecnologias que são muito utilizadas para esta tarefa são:
 
-# A Prometheus & Grafana docker-compose stack
+* [Prometheus](https://prometheus.io/), uma ferramenta open source para armazenamento e consulta de séries temporais (medidas coletadas com o passar do tempo);
+* [Grafana](https://grafana.com/), uma ferramenta para visualização e monitoramento de dados de séries temporais;
 
-Here's a quick start using Play-With-Docker (PWD) to start-up a [Prometheus](http://prometheus.io/) stack containing Prometheus, Grafana and Node scraper to monitor your Docker infrastructure. The Try in PWD below allows you to quickly deploy the entire Prometheus stack with a click of the button. This will allow you to quickly test the stack to see if it meets your needs.
+Uma arquitetura comum quando utilizamos essas ferramentas é a seguinte:
 
-[![Try in PWD](https://github.com/play-with-docker/stacks/raw/master/assets/images/button.png)](https://labs.play-with-docker.com/?stack=https://raw.githubusercontent.com/vegasbrianc/prometheus/version-2/pwd-stack.yml)
+![Diagrama Prometheus/Grafana](https://github.com/InsightLab/docker-introduction-challenge/raw/master/Diagrama%20Prometheus_Grafana.png)
 
-# Pre-requisites
-Before we get started installing the Prometheus stack. Ensure you install the latest version of docker and [docker swarm](https://docs.docker.com/engine/swarm/swarm-tutorial/) on your Docker host machine. Docker Swarm is installed automatically when using Docker for Mac or Docker for Windows.
+O Grafana entra na parte de visualização, com seus painéis (*dashboards*). Eles são configurados com consultas e gráficos para apresentar os dados do Prometheus. Este último, por sua vez, armazena as métricas coletadas das aplicações e responde às consultas do Grafana. Por fim, existe o **exporter**, o qual é responsável por coletar as métricas de uma aplicação e disponibilizá-las ao Prometheus. O *exporter* pode aparecer, pelo menos, de três maneiras (da esquerda para a direita): encapsulando uma aplicação, rodando dentro da aplicação ou analisando externamente a aplicação.
 
-# Installation & Configuration
-Clone the project locally to your Docker host.
+Para este desafio, utilizaremos o seguinte ecossistema: haverá uma instância do MongoDB rodando. O Prometheus será responsável por colher métricas dessa instância (número de inserções, consultas, memória utilizada, etc.) e o Grafana irá conter o dashboard para visualizar as métricas do Prometheus. Porém, o Prometheus não se comunica diretamente com o MongoDB, ele precisa coletar as métricas já estruturadas em um formato que ele seja capaz de compreender. Para isso, precisamos usar um exporter: um serviço responsável por analisar a instância do MongoDB e prover as métricas para o Prometheus.
 
-If you would like to change which targets should be monitored or make configuration changes edit the [/prometheus/prometheus.yml](https://github.com/vegasbrianc/prometheus/blob/version-2/prometheus/prometheus.yml) file. The targets section is where you define what should be monitored by Prometheus. The names defined in this file are actually sourced from the service name in the docker-compose file. If you wish to change names of the services you can add the "container_name" parameter in the `docker-compose.yml` file.
+## TUTORIAL
 
-Once configurations are done let's start it up. From the /prometheus project directory run the following command:
+Como o foco do desafio é trabalhar com Docker, este repositório contm um pequeno arcabouço com a estrutura do Grafana e Prometheus configuradas.
 
-    $ HOSTNAME=$(hostname) docker stack deploy -c docker-stack.yml prom
+Esse repositório contém um arquivo *docker-compose.yml* que traz as configurações necessárias para subir o Grafana e o Prometheus. A primeira coisa que podemos notar é que uma rede chamada **main** é definida no começo do arquivo. Precisamos atribuir um nome para ela. Utilizaremos **mongo** como nome da rede. Para criar uma rede no docker, basta executar `docker network create <nome_da_rede>` .
 
+Vamos ver o que temos até então: suba a aplicação utilizando o *docker-compose*. Agora, poderemos acessar a porta **9090**, que conterá a interface web do Prometheus. Não entraremos em detalhes sobre seu funcionamento, mas no cabeçalho da página, vá em **status -> targets**. Essa seção mostra as fontes de onde o Prometheus coleta suas métricas.
 
-That's it the `docker stack deploy' command deploys the entire Grafana and Prometheus stack automagically to the Docker Swarm. By default cAdvisor and node-exporter are set to Global deployment which means they will propogate to every docker host attached to the Swarm.
+Opa, parece que tem algo de errado! Ele está tentando consumir métricas de um serviço chamado **mongodb-exporter** na porta **9216**, mas o serviço está **DOWN**, ou sejá, fora do ar! Desse jeito a aplicação não vai funcionar.
 
-The Grafana Dashboard is now accessible via: `http://<Host IP Address>:3000` for example http://192.168.10.1:3000
+Precisamos subir a aplicação do exporter para podermos coletar as métricas, porém, sua imagem não está disponível publicamente! Como podemos proceder?
 
-	username - admin
-	password - foobar (Password is stored in the `/grafana/config.monitoring` env file)
+Bom, os desenvolvedores do *Perconalabs* disponibilizaram o código fonte de um [exporter do MongoDB para o Prometheus](https://github.com/percona/mongodb_exporter) no github. Podemos clonar esse repositório e construir uma imagem docker a partir dele! E olha que sensacional: ele já tem um **Dockerfile** E uma diretiva para construir a imagem: `make docker`. Se ficar mais fácil do que isso, perde a graça, certo?
 
-In order to check the status of the newly created stack:
+Agora que temos a imagem (*mongodb-exporter:master*), podemos adicionar o serviço do exporter no *docker-compose.yml*. Lembre-se de informar as seguintes informações:
 
-    $ docker stack ps prom
+* rede em que o serviço irá rodar;
+* nome do serviço de acordo com o esperado no Prometheus;
+* porta para o Prometheus consumir;
+* endereço da instância do MongoDB.
 
-View running services:
+Mas espera, ainda não temos uma instância do MongoDB! Aproveite que está editando o arquivo do docker compose e adicione um serviço para o MongoDB utilizando a imagem **mongo:latest**. Uma vez que tenha seu serviço configurado, adicione o comando `--mongodb.uri=mongodb://<nome do serviço do mongo>:27017` na configuração do exporter. Lembre-se de checar se todas as informações (portas, rede, etc.) estão corretas!
 
-    $ docker service ls
+Agora que está tudo pronto, vamos subir o docker compose novamente e verificar o status no Prometheus!
 
-View logs for a specific service
+Perfeito! O exporter está funcionando! Se quiser, acesse a porta 9216 para ver como que o exporter envia as métricas. Agora vamos ao Grafana!
 
-    $ docker service logs prom_<service_name>
+Na porta 3000, podemos acessar o Grafana utilizando o usuário **admin** e deixando o **campo de senha em branco**. Assim que entramos, podemos identificar um símbolo em forma de + no painel esquerdo. Nele, selecionamos a opção **Import**. Agora, precisamos carregar nosso dashboard (o qual já está corretamente configurado no repositório) no Grafana. Existem 3 maneiras de fazer isso:
 
-## Add Datasources and Dashboards
-Grafana version 5.0.0 has introduced the concept of provisioning. This allows us to automate the process of adding Datasources & Dashboards. The `/grafana/provisioning/` directory contains the `datasources` and `dashboards` directories. These directories contain YAML files which allow us to specify which datasource or dashboards should be installed. 
+* Informando o ID do dashboard, caso esteja disponível no catálogo aberto do Grafana;
+* Colando o JSON de um dashboard gerado pelo Grafana;
+* Importando o arquivo JSON de um painel.
 
-If you would like to automate the installation of additional dashboards just copy the Dashboard `JSON` file to `/grafana/provisioning/dashboards` and it will be provisioned next time you stop and start Grafana.
+No repositório, já contém um arquivo chamado MongoDB-Dashboard.json com nosso dashboard configurado. Basta importá-lo!
 
-## Install Dashboards the old way
+Pronto! Agora conseguimos monitorar nossa instância do MongoDB!
 
-I created a Dashboard template which is available on [Grafana Docker Dashboard](https://grafana.net/dashboards/179). Simply select Import from the Grafana menu -> Dashboards -> Import and provide the Dashboard ID [#179](https://grafana.net/dashboards/179)
-
-This dashboard is intended to help you get started with monitoring. If you have any changes you would like to see in the Dashboard let me know so I can update Grafana site as well.
-
-Here's the Dashboard Template
-
-![Grafana Dashboard](https://github.com/vegasbrianc/prometheus/raw/version-2/images/Dashboard.png)
-
-Grafana Dashboard - `dashboards/Grana_Dashboad.json`
-Alerting Dashboard
-
-
-## Alerting
-Alerting has been added to the stack with Slack integration. 2 Alerts have been added and are managed
-
-Alerts              - `prometheus/alert.rules`
-Slack configuration - `alertmanager/config.yml`
-
-The Slack configuration requires to build a custom integration.
-* Open your slack team in your browser `https://<your-slack-team>.slack.com/apps`
-* Click build in the upper right corner
-* Choose Incoming Web Hooks link under Send Messages
-* Click on the "incoming webhook integration" link
-* Select which channel
-* Click on Add Incoming WebHooks integration
-* Copy the Webhook URL into the `alertmanager/config.yml` URL section
-* Fill in Slack username and channel
-
-View Prometheus alerts `http://<Host IP Address>:9090/alerts`
-View Alert Manager `http://<Host IP Address>:9093`
-
-### Test Alerts
-A quick test for your alerts is to stop a service. Stop the node_exporter container and you should notice shortly the alert arrive in Slack. Also check the alerts in both the Alert Manager and Prometheus Alerts just to understand how they flow through the system.
-
-High load test alert - `docker run --rm -it busybox sh -c "while true; do :; done"`
-
-Let this run for a few minutes and you will notice the load alert appear. Then Ctrl+C to stop this container.
-
-### Add Additional Datasources
-Now we need to create the Prometheus Datasource in order to connect Grafana to Prometheus 
-* Click the `Grafana` Menu at the top left corner (looks like a fireball)
-* Click `Data Sources`
-* Click the green button `Add Data Source`.
-
-<img src="https://github.com/vegasbrianc/prometheus/raw/version-2/images/Add_Data_Source.png" width="400" heighth="400">
-
-# Security Considerations
-This project is intended to be a quick-start to get up and running with Docker and Prometheus. Security has not been implemented in this project. It is the users responsability to implement Firewall/IpTables and SSL.
-
-Since this is a template to get started Prometheus and Alerting services are exposing their ports to allow for easy troubleshooting and understanding of how the stack works.
-
-## Deploy Prometheus stack with Traefik
-
-Same requirements as above. Swarm should be enabled and the Repo should be cloned to your Docker host.
-
-In the `docker-traefik-prometheus`directory run the following:
-
-    docker stack deploy -c docker-traefik-stack.yml traefik
-
-Verify all the services have been provisioned. The Replica count for each service should be 1/1 
-**Note this can take a couple minutes**
-
-    docker service ls
-
-## Prometheus & Grafana now have hostnames
-
-* Grafana - http://grafana.localhost
-* Prometheus - http://prometheus.localhost
-
-
-## Check the Metrics
-Once all the services are up we can open the Traefik Dashboard. The dashboard should show us our frontend and backends configured for both Grafana and Prometheus.
-
-    http://localhost:8080
-
-
-Take a look at the metrics which Traefik is now producing in Prometheus metrics format
-
-    http://localhost:8080/metrics
-
-
-## Login to Grafana and Visualize Metrics
-
-Grafana is an Open Source visualization tool for the metrics collected with Prometheus. Next, open Grafana to view the Traefik Dashboards.
-**Note: Firefox doesn't properly work with the below URLS please use Chrome**
-
-    http://grafana.localhost
-
-Username: admin
-Password: foobar
-
-Open the Traefik Dashboard and select the different backends available
-
-**Note: Upper right-hand corner of Grafana switch the default 1 hour time range down to 5 minutes. Refresh a couple times and you should see data start flowing**
-
-# Production Security:
-
-Here are just a couple security considerations for this stack to help you get started.
-* Remove the published ports from Prometheus and Alerting servicesi and only allow Grafana to be accessed
-* Enable SSL for Grafana with a Proxy such as [jwilder/nginx-proxy](https://hub.docker.com/r/jwilder/nginx-proxy/) or [Traefik](https://traefik.io/) with Let's Encrypt
-* Add user authentication via a Reverse Proxy [jwilder/nginx-proxy](https://hub.docker.com/r/jwilder/nginx-proxy/) or [Traefik](https://traefik.io/) for services cAdvisor, Prometheus, & Alerting as they don't support user authenticaiton
-* Terminate all services/containers via HTTPS/SSL/TLS
-
-# Troubleshooting
-
-It appears some people have reported no data appearing in Grafana. If this is happening to you be sure to check the time range being queried within Grafana to ensure it is using Today's date with current time.
-
-## Mac Users
-
-1. The node-exporter does not run the same as Mac and Linux. Node-Exporter is not designed to run on Mac and in fact cannot collect metrics from the Mac OS due to the differences between Mac and Linux OS's. I recommend you comment out the node-exporter section in the `docker-compose.yml` file and instead just use the cAdvisor.
-
-2. If you find after you deploy your project that the prometheus and alertmanager services are in pending status due to "no suitable node" this is due to file system permissions. Be sure to Open Docker for Mac Preferences -> File Sharing Menu and add the following:
-
-![Docker for Mac File Sharing Settings](https://github.com/vegasbrianc/prometheus/raw/master/images/mac-filesystem.png)
-
-# Interesting Projects that use this Repo
-Several projects utilize this Prometheus stack. Here's the list of projects:
-
-* [Docker Pulls](https://github.com/vegasbrianc/docker-pulls) - Visualize Docker-Hub pull statistics with Prometheus
-* [GitHub Monitoring](https://github.com/vegasbrianc/github-monitoring) - Monitor your GitHub projects with Prometheus
-* [Traefik Reverse Proxy/Load Balancer Monitoring](https://github.com/vegasbrianc/docker-traefik-prometheus) - Monitor the popular Reverse Proxy/Load Balancer Traefik with Prometheus
-* [internet monitoring](https://github.com/maxandersen/internet-monitoring) - Monitor your local network, internet connection and speed with Prometheus.
-* [Dockerize Your Dev](https://github.com/RiFi2k/dockerize-your-dev) - Docker compose a VM to get LetsEncrypt / NGINX proxy auto provisioning, ELK logging, Prometheus / Grafana monitoring, Portainer GUI, and more...
-
-*Have an intersting Project which use this Repo? Submit yours to the list*

@@ -22,7 +22,7 @@ Para este desafio, utilizaremos o seguinte ecossistema: haverá uma instância d
 
 Como o foco do desafio é trabalhar com Docker, este repositório contm um pequeno arcabouço com a estrutura do Grafana e Prometheus configuradas.
 
-Esse repositório contém um arquivo *docker-compose.yml* que traz as configurações necessárias para subir o Grafana e o Prometheus. A primeira coisa que podemos notar é que uma rede chamada **main** é definida no começo do arquivo. Precisamos atribuir um nome para ela. Utilizaremos **mongo** como nome da rede. Para criar uma rede no docker, basta executar `docker network create <nome_da_rede>` .
+Esse repositório contém um arquivo *docker-compose.yml* que traz as configurações necessárias para subir o Grafana e o Prometheus. A primeira coisa que podemos notar é que uma rede chamada **main** é definida no começo do arquivo. Precisamos atribuir um nome para ela. Crie uma rede chamada **mongo**.
 
 Vamos ver o que temos até então: suba a aplicação utilizando o *docker-compose*. Agora, poderemos acessar a porta **9090**, que conterá a interface web do Prometheus. Não entraremos em detalhes sobre seu funcionamento, mas no cabeçalho da página, vá em **status -> targets**. Essa seção mostra as fontes de onde o Prometheus coleta suas métricas.
 

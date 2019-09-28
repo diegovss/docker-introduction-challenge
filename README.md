@@ -55,3 +55,5 @@ No repositório, já contém um arquivo chamado MongoDB-Dashboard.json com nosso
 
 Pronto! Agora conseguimos monitorar nossa instância do MongoDB!
 
+**TAREFA EXTRA:** faça o mongo exporter monitorar uma intância do MongoDB que esteja rodando em uma máquina diferente!
+

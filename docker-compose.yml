@@ -6,10 +6,30 @@ volumes:
 
 networks:
   main: 
-    name: ???
+    name: mongo
 
 services:
 
+  mongodb-exporter:
+    image: mongodb-exporter:master
+    ports:
+      - 9216:9216
+    links:
+      - mongodb
+    networks:
+      - main
+    restart: always
+    command:
+      - '--mongodb.uri=mongodb://mongodb:27017'
+
+  mongodb:
+    image: mongo:latest
+      networks:
+        - main
+      ports:
+        - 27017:27017
+      restart: always
+ 
   prometheus:
     image: prom/prometheus:v2.1.0
     volumes:
